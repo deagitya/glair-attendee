@@ -3,13 +3,43 @@
         <h5 class="mb-0">Google Meet Bot Logins</h5>
     </div>
     <div class="card-body">
-        {% if google_meet_bot_login_group and google_meet_bot_login_group.google_meet_bot_logins.exists %}            
+        {% if oidc_credentials %}
+            <div class="alert alert-success" id="oidc-credentials-display">
+                <h6><strong>OIDC Credentials Created</strong></h6>
+                <p class="text-danger"><strong>Copy these credentials now. The client secret will not be shown again.</strong></p>
+                <div class="mb-2">
+                    <label class="form-label fw-bold">Client ID</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control font-monospace" value="{{ oidc_credentials.client_id }}" readonly id="oidc-client-id">
+                        <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('oidc-client-id').value)">Copy</button>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label fw-bold">Client Secret</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control font-monospace" value="{{ oidc_credentials.client_secret }}" readonly id="oidc-client-secret">
+                        <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('oidc-client-secret').value)">Copy</button>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label fw-bold">Issuer URL</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control font-monospace" value="{{ oidc_credentials.issuer_url }}" readonly id="oidc-issuer-url">
+                        <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('oidc-issuer-url').value)">Copy</button>
+                    </div>
+                </div>
+                <p class="mt-2 mb-0 text-muted small">Enter these values in your Google Admin Console SSO profile configuration.</p>
+            </div>
+        {% endif %}
+
+        {% if google_meet_bot_login_group and google_meet_bot_login_group.google_meet_bot_logins.exists %}
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>
                         <tr>
                             <th>Email</th>
                             <th>Workspace Domain</th>
+                            <th>Protocol</th>
                             <th>Last Used</th>
                             <th>Actions</th>
                         </tr>
@@ -20,6 +50,13 @@
                             <td>{{ login.email }}</td>
                             <td>{{ login.workspace_domain }}</td>
                             <td>
+                                {% if login.auth_protocol == "oidc" %}
+                                    <span class="badge bg-primary">OIDC</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">SAML</span>
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if login.last_used_at %}
                                     {{ login.last_used_at|date:"M d, Y H:i" }}
                                 {% else %}
@@ -27,7 +64,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <form 
+                                <form
                                     hx-post="{% url 'bots:delete-google-meet-bot-login' project.object_id login.object_id %}"
                                     hx-target="#google-meet-bot-login-container"
                                     hx-select="#google-meet-bot-login-container"
@@ -45,7 +82,7 @@
                     </tbody>
                 </table>
             </div>
-            
+
             <button class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#googleMeetBotLoginModal">
                 <i class="bi bi-plus-circle"></i> Add Login
             </button>
@@ -69,12 +106,12 @@
             <div class="modal-body">
                 <div class="alert alert-info mb-3">
                     <i class="bi bi-info-circle"></i>
-                    Need help setting up signed-in bots for Google Meet? See our 
+                    Need help setting up signed-in bots for Google Meet? See our
                     <a href="https://docs.attendee.dev/guides/signed-in-bots#signed-in-bots__signed-in-google-meet-bots" target="_blank" rel="noopener noreferrer">
                         documentation
                     </a>.
                 </div>
-                
+
                 <form id="google-meet-bot-login-form" autocomplete="off"
                     hx-post="{% url 'bots:create-google-meet-bot-login' project.object_id %}"
                     hx-target="#google-meet-bot-login-container"
@@ -84,66 +121,84 @@
                     onsubmit="return validateGoogleMeetBotLoginForm()"
                 >
                     {% csrf_token %}
-                    
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Authentication Protocol</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="auth_protocol" id="auth_protocol_oidc" value="oidc" checked onchange="toggleAuthProtocolFields()">
+                            <label class="form-check-label" for="auth_protocol_oidc">
+                                OIDC <span class="badge bg-success">Recommended</span>
+                            </label>
+                            <div class="form-text">Credentials are generated automatically. Simpler setup.</div>
+                        </div>
+                        <div class="form-check mt-1">
+                            <input class="form-check-input" type="radio" name="auth_protocol" id="auth_protocol_saml" value="saml" onchange="toggleAuthProtocolFields()">
+                            <label class="form-check-label" for="auth_protocol_saml">
+                                SAML <span class="badge bg-secondary">Legacy</span>
+                            </label>
+                            <div class="form-text">Requires uploading a certificate and private key.</div>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label for="workspace_domain" class="form-label">Workspace Domain</label>
-                        <input type="text" 
-                            class="form-control" 
-                            id="workspace_domain" 
-                            name="workspace_domain" 
+                        <input type="text"
+                            class="form-control"
+                            id="workspace_domain"
+                            name="workspace_domain"
                             required
                             placeholder="example.com">
                         <div class="form-text">The Google Workspace domain for this account</div>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="email" class="form-label">Email</label>
-                        <input type="email" 
-                            class="form-control" 
-                            id="email" 
-                            name="email" 
+                        <input type="email"
+                            class="form-control"
+                            id="email"
+                            name="email"
                             required
                             placeholder="bot@example.com">
                         <div class="form-text">The email address of the bot account</div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="private_key_file" class="form-label">Private Key</label>
-                        <input type="file" 
-                            class="form-control" 
-                            id="private_key_file" 
-                            accept=".pem,.key,.txt"
-                            required>
-                        <div class="form-text">Upload the private key file for client certificate authentication</div>
-                        <textarea 
-                            class="form-control font-monospace d-none" 
-                            id="private_key" 
-                            name="private_key"></textarea>
-                        <div id="private_key_preview" class="mt-2 p-2 bg-light border rounded font-monospace small" style="display: none; max-height: 150px; overflow-y: auto;">
-                            <pre id="private_key_preview_content" class="mb-0" style="white-space: pre-wrap; word-break: break-all;"></pre>
+
+                    <div id="saml-fields" style="display: none;">
+                        <div class="mb-3">
+                            <label for="private_key_file" class="form-label">Private Key</label>
+                            <input type="file"
+                                class="form-control"
+                                id="private_key_file"
+                                accept=".pem,.key,.txt">
+                            <div class="form-text">Upload the private key file for client certificate authentication</div>
+                            <textarea
+                                class="form-control font-monospace d-none"
+                                id="private_key"
+                                name="private_key"></textarea>
+                            <div id="private_key_preview" class="mt-2 p-2 bg-light border rounded font-monospace small" style="display: none; max-height: 150px; overflow-y: auto;">
+                                <pre id="private_key_preview_content" class="mb-0" style="white-space: pre-wrap; word-break: break-all;"></pre>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="cert_file" class="form-label">Certificate</label>
+                            <input type="file"
+                                class="form-control"
+                                id="cert_file"
+                                accept=".pem,.crt,.cer,.txt">
+                            <div class="form-text">Upload the client certificate file</div>
+                            <textarea
+                                class="form-control font-monospace d-none"
+                                id="cert"
+                                name="cert"></textarea>
+                            <div id="cert_preview" class="mt-2 p-2 bg-light border rounded font-monospace small" style="display: none; max-height: 150px; overflow-y: auto;">
+                                <pre id="cert_preview_content" class="mb-0" style="white-space: pre-wrap; word-break: break-all;"></pre>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="cert_file" class="form-label">Certificate</label>
-                        <input type="file" 
-                            class="form-control" 
-                            id="cert_file" 
-                            accept=".pem,.crt,.cer,.txt"
-                            required>
-                        <div class="form-text">Upload the client certificate file</div>
-                        <textarea 
-                            class="form-control font-monospace d-none" 
-                            id="cert" 
-                            name="cert"></textarea>
-                        <div id="cert_preview" class="mt-2 p-2 bg-light border rounded font-monospace small" style="display: none; max-height: 150px; overflow-y: auto;">
-                            <pre id="cert_preview_content" class="mb-0" style="white-space: pre-wrap; word-break: break-all;"></pre>
-                        </div>
-                    </div>
-                    
+
                     <div class="mt-3">
                         <button type="submit" class="btn btn-primary">Add Login</button>
-                        <button type="button" 
+                        <button type="button"
                                 class="btn btn-secondary ms-2"
                                 data-bs-dismiss="modal">
                             Cancel
@@ -156,22 +211,43 @@
 </div>
 
 <script>
+    function toggleAuthProtocolFields() {
+        const samlSelected = document.getElementById('auth_protocol_saml').checked;
+        const samlFields = document.getElementById('saml-fields');
+        const privateKeyFile = document.getElementById('private_key_file');
+        const certFile = document.getElementById('cert_file');
+
+        if (samlSelected) {
+            samlFields.style.display = 'block';
+            privateKeyFile.required = true;
+            certFile.required = true;
+        } else {
+            samlFields.style.display = 'none';
+            privateKeyFile.required = false;
+            certFile.required = false;
+        }
+    }
+
     function validateGoogleMeetBotLoginForm() {
-        const privateKey = document.getElementById('private_key').value;
-        const cert = document.getElementById('cert').value;
-        
-        if (!privateKey || privateKey.trim() === '') {
-            alert('Please upload a private key file.');
-            document.getElementById('private_key_file').focus();
-            return false;
+        const samlSelected = document.getElementById('auth_protocol_saml').checked;
+
+        if (samlSelected) {
+            const privateKey = document.getElementById('private_key').value;
+            const cert = document.getElementById('cert').value;
+
+            if (!privateKey || privateKey.trim() === '') {
+                alert('Please upload a private key file.');
+                document.getElementById('private_key_file').focus();
+                return false;
+            }
+
+            if (!cert || cert.trim() === '') {
+                alert('Please upload a certificate file.');
+                document.getElementById('cert_file').focus();
+                return false;
+            }
         }
-        
-        if (!cert || cert.trim() === '') {
-            alert('Please upload a certificate file.');
-            document.getElementById('cert_file').focus();
-            return false;
-        }
-        
+
         return true;
     }
 
@@ -181,11 +257,15 @@
             form.reset();
         }
         // Clear previews
-        document.getElementById('private_key_preview').style.display = 'none';
-        document.getElementById('cert_preview').style.display = 'none';
-        document.getElementById('private_key').value = '';
-        document.getElementById('cert').value = '';
-        
+        var privateKeyPreview = document.getElementById('private_key_preview');
+        var certPreview = document.getElementById('cert_preview');
+        if (privateKeyPreview) privateKeyPreview.style.display = 'none';
+        if (certPreview) certPreview.style.display = 'none';
+        var privateKeyField = document.getElementById('private_key');
+        var certField = document.getElementById('cert');
+        if (privateKeyField) privateKeyField.value = '';
+        if (certField) certField.value = '';
+
         const modalElement = document.getElementById('googleMeetBotLoginModal');
         if (modalElement) {
             const modalInstance = bootstrap.Modal.getInstance(modalElement);
@@ -202,6 +282,9 @@
     }
 
     function initializeGoogleMeetBotLoginForm() {
+        // Initialize protocol toggle
+        toggleAuthProtocolFields();
+
         const privateKeyFileInput = document.getElementById('private_key_file');
         if (privateKeyFileInput) {
             privateKeyFileInput.addEventListener('change', function(event) {
@@ -263,11 +346,14 @@
                 form.reset();
             }
             // Clear previews
-            document.getElementById('private_key_preview').style.display = 'none';
-            document.getElementById('cert_preview').style.display = 'none';
-            document.getElementById('private_key').value = '';
-            document.getElementById('cert').value = '';
+            var privateKeyPreview = document.getElementById('private_key_preview');
+            var certPreview = document.getElementById('cert_preview');
+            if (privateKeyPreview) privateKeyPreview.style.display = 'none';
+            if (certPreview) certPreview.style.display = 'none';
+            var privateKeyField = document.getElementById('private_key');
+            var certField = document.getElementById('cert');
+            if (privateKeyField) privateKeyField.value = '';
+            if (certField) certField.value = '';
         });
     }
 </script>
-

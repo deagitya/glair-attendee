@@ -48,6 +48,14 @@ INSTALLED_APPS = [
 
 CREDENTIALS_ENCRYPTION_KEY = os.getenv("CREDENTIALS_ENCRYPTION_KEY")
 
+# OIDC IdP signing key (base64-encoded PEM). Used to sign all OIDC id_tokens.
+OIDC_RSA_PRIVATE_KEY_PEM = None
+_oidc_key_b64 = os.getenv("OIDC_RSA_PRIVATE_KEY_B64")
+if _oidc_key_b64:
+    import base64
+
+    OIDC_RSA_PRIVATE_KEY_PEM = base64.b64decode(_oidc_key_b64).decode("utf-8")
+
 AUTH_USER_MODEL = "accounts.User"
 
 AUTHENTICATION_BACKENDS = [

@@ -91,6 +91,17 @@ class GoogleMeetBotLogin(models.Model):
     workspace_domain = models.CharField(max_length=255)
     email = models.CharField(max_length=255)
 
+    AUTH_PROTOCOL_SAML = "saml"
+    AUTH_PROTOCOL_OIDC = "oidc"
+    AUTH_PROTOCOL_CHOICES = [
+        (AUTH_PROTOCOL_SAML, "SAML"),
+        (AUTH_PROTOCOL_OIDC, "OIDC"),
+    ]
+
+    auth_protocol = models.CharField(max_length=10, choices=AUTH_PROTOCOL_CHOICES, default="saml")
+    oidc_client_id = models.CharField(max_length=64, null=True, blank=True, unique=True, db_index=True)
+    oidc_client_secret_hash = models.CharField(max_length=128, null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
@@ -118,6 +129,9 @@ class GoogleMeetBotLogin(models.Model):
         f = Fernet(settings.CREDENTIALS_ENCRYPTION_KEY)
         decrypted_data = f.decrypt(bytes(self._encrypted_data))
         return json.loads(decrypted_data.decode())
+
+    def verify_client_secret(self, raw_secret):
+        return hashlib.sha256(raw_secret.encode()).hexdigest() == self.oidc_client_secret_hash
 
     def save(self, *args, **kwargs):
         if not self.object_id:

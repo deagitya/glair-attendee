@@ -80,6 +80,33 @@ services:
     volumes:
       - redis:/data/redis
 
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio:/data
+    networks:
+      - attendee_network
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+
+  minio-init:
+    image: minio/mc
+    depends_on:
+      - minio
+    networks:
+      - attendee_network
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
+      mc mb --ignore-existing local/recordings;
+      "
+
 networks:
   attendee_network:
     driver: bridge
@@ -87,3 +114,4 @@ networks:
 volumes:
   postgres:
   redis:
+  minio:
