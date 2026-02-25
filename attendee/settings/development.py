@@ -4,7 +4,7 @@ from .base import *
 
 DEBUG = True
 SITE_DOMAIN = "localhost:8000"
-ALLOWED_HOSTS = ["tendee-stripe-hooks.ngrok.io", "localhost", "prosa-attendance.prosa.ai"]
+ALLOWED_HOSTS = ["tendee-stripe-hooks.ngrok.io", "localhost", "prosa-attendance.prosa.ai", "172.31.49.157"]
 
 DATABASES = {
     "default": {
