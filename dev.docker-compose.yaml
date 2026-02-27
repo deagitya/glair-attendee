@@ -10,6 +10,11 @@ services:
       - REDIS_URL=redis://redis:6379/5
       - DJANGO_SETTINGS_MODULE=attendee.settings.development
       - ENABLE_CHROME_SANDBOX=false
+      - SITE_DOMAIN=${SITE_DOMAIN:-localhost:8000}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-http://localhost:8000}
+      - OIDC_RSA_PRIVATE_KEY=${OIDC_RSA_PRIVATE_KEY:-}
+      - OIDC_RSA_PUBLIC_KEY=${OIDC_RSA_PUBLIC_KEY:-}
     command: "celery -A attendee worker -l INFO"
 
   attendee-scheduler-local:
@@ -37,6 +42,11 @@ services:
       - POSTGRES_HOST=postgres
       - REDIS_URL=redis://redis:6379/5
       - DJANGO_SETTINGS_MODULE=attendee.settings.development
+      - SITE_DOMAIN=${SITE_DOMAIN:-localhost:8000}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-http://localhost:8000}
+      - OIDC_RSA_PRIVATE_KEY=${OIDC_RSA_PRIVATE_KEY:-}
+      - OIDC_RSA_PUBLIC_KEY=${OIDC_RSA_PUBLIC_KEY:-}
     command: python manage.py runserver 0.0.0.0:8000
     entrypoint: []
 
