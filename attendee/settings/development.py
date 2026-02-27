@@ -4,8 +4,12 @@ from .base import *
 
 DEBUG = True
 SITE_DOMAIN = os.getenv("SITE_DOMAIN", "localhost:8000")
-ALLOWED_HOSTS = ["localhost", "attendee-app", SITE_DOMAIN]
-CSRF_TRUSTED_ORIGINS = ["http://localhost:8000", f"https://{SITE_DOMAIN}"]
+
+_extra_hosts = os.getenv("ALLOWED_HOSTS", "").split(",") if os.getenv("ALLOWED_HOSTS") else []
+ALLOWED_HOSTS = ["localhost", "attendee-app", SITE_DOMAIN] + _extra_hosts
+
+_extra_origins = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if os.getenv("CSRF_TRUSTED_ORIGINS") else []
+CSRF_TRUSTED_ORIGINS = ["http://localhost:8000", f"https://{SITE_DOMAIN}"] + _extra_origins
 
 DATABASES = {
     "default": {
