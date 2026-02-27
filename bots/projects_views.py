@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 import os
+import secrets
 import uuid
 
 import stripe
@@ -825,7 +826,7 @@ class ProjectBotDetailView(LoginRequiredMixin, ProjectUrlContextMixin, View):
                 "participants": participants,
                 "ParticipantEventTypes": ParticipantEventTypes,
                 "WebhookDeliveryAttemptStatus": WebhookDeliveryAttemptStatus,
-                "credits_consumed": -sum([t.credits_delta() for t in bot.credit_transactions.all()]) if bot.credit_transactions.exists() else None,
+                "credits_consumed": -sum([t.credits_delta() for t in bot.credit_transactions.all()]) if hasattr(bot, 'credit_transactions') and bot.credit_transactions.exists() else None,
                 "resource_snapshots": resource_snapshots,
                 "max_ram_usage": max_ram_usage,
                 "max_cpu_usage": max_cpu_usage,
@@ -1378,12 +1379,14 @@ class CreateGoogleMeetBotLoginView(LoginRequiredMixin, ProjectUrlContextMixin, V
             # Extract fields from request
             workspace_domain = request.POST.get("workspace_domain", "").strip()
             email = request.POST.get("email", "").strip()
-            private_key = request.POST.get("private_key", "").strip()
-            cert = request.POST.get("cert", "").strip()
 
             # Validate required fields
-            if not all([workspace_domain, email, private_key, cert]):
-                return HttpResponse("Missing required fields: workspace_domain, email, private_key, and cert are all required", status=400)
+            if not all([workspace_domain, email]):
+                return HttpResponse("Missing required fields: workspace_domain and email are required", status=400)
+
+            # Auto-generate OIDC credentials
+            client_id = secrets.token_urlsafe(32)
+            client_secret = secrets.token_urlsafe(48)
 
             # Create the GoogleMeetBotLogin
             google_meet_bot_login = GoogleMeetBotLogin.objects.create(
@@ -1394,14 +1397,17 @@ class CreateGoogleMeetBotLoginView(LoginRequiredMixin, ProjectUrlContextMixin, V
 
             # Set the encrypted credentials
             credentials_data = {
-                "private_key": private_key,
-                "cert": cert,
+                "client_id": client_id,
+                "client_secret": client_secret,
             }
             google_meet_bot_login.set_credentials(credentials_data)
 
-            context = self.get_project_context(object_id, project)
-            context["google_meet_bot_login_group"] = google_meet_bot_login_group
-            return render(request, "projects/partials/google_meet_bot_login_group.html", context)
+            return render(request, "projects/partials/google_meet_bot_login_created_modal.html", {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "email": email,
+                "workspace_domain": workspace_domain,
+            })
 
         except Exception as e:
             error_id = str(uuid.uuid4())

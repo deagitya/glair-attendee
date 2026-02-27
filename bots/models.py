@@ -97,12 +97,12 @@ class GoogleMeetBotLogin(models.Model):
     last_used_at = models.DateTimeField(null=True, blank=True)
 
     @property
-    def cert(self):
-        return self.get_credentials().get("cert")
+    def client_id(self):
+        return self.get_credentials().get("client_id")
 
     @property
-    def private_key(self):
-        return self.get_credentials().get("private_key")
+    def client_secret(self):
+        return self.get_credentials().get("client_secret")
 
     def set_credentials(self, credentials_dict):
         """Encrypt and save credentials"""

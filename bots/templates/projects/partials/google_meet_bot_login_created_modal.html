@@ -1,0 +1,71 @@
+<div class="modal-header">
+    <h5 class="modal-title">Google Meet Bot Login Created</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+    <div class="alert alert-warning">
+        <strong>Important:</strong> These credentials will only be shown once. Copy them now and enter them in your Google Workspace OIDC SSO profile.
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input type="text" class="form-control" value="{{ email }}" readonly tabindex="-1" style="pointer-events: none;">
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Workspace Domain</label>
+        <input type="text" class="form-control" value="{{ workspace_domain }}" readonly tabindex="-1" style="pointer-events: none;">
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Client ID</label>
+        <div class="input-group">
+            <input type="text" class="form-control" value="{{ client_id }}" id="googleMeetClientIdValue" readonly tabindex="-1" style="pointer-events: none;">
+            <button class="btn btn-outline-secondary" type="button" onclick="copyGoogleMeetField('googleMeetClientIdValue')">
+                <i class="bi bi-clipboard"></i>
+            </button>
+        </div>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Client Secret</label>
+        <div class="input-group">
+            <input type="text" class="form-control" value="{{ client_secret }}" id="googleMeetClientSecretValue" readonly tabindex="-1" style="pointer-events: none;">
+            <button class="btn btn-outline-secondary" type="button" onclick="copyGoogleMeetField('googleMeetClientSecretValue')">
+                <i class="bi bi-clipboard"></i>
+            </button>
+        </div>
+    </div>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+</div>
+
+<script>
+function copyGoogleMeetField(fieldId) {
+    const input = document.getElementById(fieldId);
+    navigator.clipboard.writeText(input.value);
+
+    const button = event.target.closest('button');
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<i class="bi bi-check"></i>';
+    setTimeout(() => {
+        button.innerHTML = originalHtml;
+    }, 1000);
+}
+
+var googleMeetResultModal = new bootstrap.Modal(document.getElementById('googleMeetBotLoginResultModal'));
+googleMeetResultModal.show();
+
+// Refresh table when modal is hidden
+document.getElementById('googleMeetBotLoginResultModal').addEventListener('hidden.bs.modal', function () {
+    htmx.ajax('GET',
+             window.location.pathname,
+             {
+                 target: '#google-meet-bot-login-container',
+                 select: '#google-meet-bot-login-container',
+                 swap: 'outerHTML'
+             });
+});
+
+var createModal = bootstrap.Modal.getInstance(document.getElementById('googleMeetBotLoginModal'));
+if (createModal) {
+    createModal.hide();
+}
+</script>

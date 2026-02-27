@@ -96,8 +96,13 @@ class GoogleMeetBotAdapter(WebBotAdapter, GoogleMeetUIMethods):
         self.after_bot_can_record_meeting()
 
     def add_subclass_specific_chrome_options(self, options):
-        if self.google_meet_bot_login_should_be_used:
-            options.add_argument("--guest")
+        pass
+
+    def subclass_specific_chrome_policies(self):
+        return {
+            "BrowserSignin": 0,
+            "SyncDisabled": True,
+        }
 
     def subclass_specific_before_driver_close(self):
         if self.google_meet_bot_login_session:

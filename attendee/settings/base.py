@@ -295,3 +295,10 @@ MAX_METADATA_LENGTH = int(os.getenv("MAX_METADATA_LENGTH", 1000))
 SITE_DOMAIN = os.getenv("SITE_DOMAIN", "app.attendee.dev")
 MASK_TRANSCRIPT_IN_LOGS = os.getenv("MASK_TRANSCRIPT_IN_LOGS", "false") == "true"
 ENFORCE_DOMAIN_ALLOWLIST_IN_CHROME = os.getenv("ENFORCE_DOMAIN_ALLOWLIST_IN_CHROME", "false") == "true"
+
+# OIDC SSO Provider settings (for Google Meet bot sign-in)
+OIDC_RSA_PRIVATE_KEY = os.getenv("OIDC_RSA_PRIVATE_KEY")
+OIDC_RSA_PUBLIC_KEY = os.getenv("OIDC_RSA_PUBLIC_KEY")
+OIDC_KEY_ID = os.getenv("OIDC_KEY_ID", "attendee-oidc-1")
+OIDC_ID_TOKEN_LIFETIME = int(os.getenv("OIDC_ID_TOKEN_LIFETIME", 300))
+OIDC_AUTH_CODE_LIFETIME = int(os.getenv("OIDC_AUTH_CODE_LIFETIME", 300))

@@ -142,23 +142,39 @@ class GoogleMeetUIMethods:
     def turn_off_media_inputs(self):
         logger.info("Waiting for the microphone button...")
         MICROPHONE_BUTTON_SELECTOR = 'div[aria-label="Turn off microphone"], button[aria-label="Turn off microphone"]'
-        microphone_button = self.locate_element(
-            step="turn_off_microphone_button",
-            condition=EC.presence_of_element_located((By.CSS_SELECTOR, MICROPHONE_BUTTON_SELECTOR)),
-            wait_time_seconds=6,
-        )
-        logger.info("Clicking the microphone button...")
-        self.click_element(microphone_button, "turn_off_microphone_button")
+        try:
+            microphone_button = self.locate_element(
+                step="turn_off_microphone_button",
+                condition=EC.presence_of_element_located((By.CSS_SELECTOR, MICROPHONE_BUTTON_SELECTOR)),
+                wait_time_seconds=6,
+            )
+            logger.info("Clicking the microphone button...")
+            self.click_element(microphone_button, "turn_off_microphone_button")
+        except UiCouldNotLocateElementException:
+            # Check if mic is in "problem" state (no hardware) or already off — skip in that case
+            mic_problem = self.find_element_by_selector(By.CSS_SELECTOR, '[aria-label*="Microphone problem"], [aria-label="Turn on microphone"], button[aria-label="Turn on microphone"]')
+            if mic_problem:
+                logger.info("Microphone is in problem state or already off, skipping toggle")
+            else:
+                raise
 
         logger.info("Waiting for the camera button...")
         CAMERA_BUTTON_SELECTOR = 'div[aria-label="Turn off camera"], button[aria-label="Turn off camera"]'
-        camera_button = self.locate_element(
-            step="turn_off_camera_button",
-            condition=EC.presence_of_element_located((By.CSS_SELECTOR, CAMERA_BUTTON_SELECTOR)),
-            wait_time_seconds=6,
-        )
-        logger.info("Clicking the camera button...")
-        self.click_element(camera_button, "turn_off_camera_button")
+        try:
+            camera_button = self.locate_element(
+                step="turn_off_camera_button",
+                condition=EC.presence_of_element_located((By.CSS_SELECTOR, CAMERA_BUTTON_SELECTOR)),
+                wait_time_seconds=6,
+            )
+            logger.info("Clicking the camera button...")
+            self.click_element(camera_button, "turn_off_camera_button")
+        except UiCouldNotLocateElementException:
+            # Check if camera is in "problem" state (no hardware) or already off — skip in that case
+            cam_problem = self.find_element_by_selector(By.CSS_SELECTOR, '[aria-label*="Camera problem"], [aria-label="Turn on camera"], button[aria-label="Turn on camera"]')
+            if cam_problem:
+                logger.info("Camera is in problem state or already off, skipping toggle")
+            else:
+                raise
 
     def join_now_button_selector(self):
         return '//button[.//span[text()="Ask to join" or text()="Join now" or text()="Join the call now"]]'
@@ -570,6 +586,89 @@ class GoogleMeetUIMethods:
 
         self.driver.get(redirect_url_from_google)
 
+    def enter_email_on_google_sign_in_page(self):
+        """Type the login email on Google's sign-in identifier page and submit.
+        This is needed for OIDC SSO, which requires the user to enter their email
+        before Google redirects to the IdP."""
+        login_email = self.google_meet_bot_login_session.get("login_email")
+        if not login_email:
+            logger.warning("No login_email in session, skipping email entry")
+            return
+
+        try:
+            email_input = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'input[type="email"]'))
+            )
+            # Wait for the page JS to fully initialize
+            time.sleep(3)
+            logger.info(f"Found Google sign-in email input, entering email: {login_email}")
+            email_input.clear()
+            email_input.send_keys(login_email)
+            time.sleep(1)
+
+            # Use Selenium's native click (generates trusted isTrusted=true events)
+            try:
+                next_button = self.driver.find_element(By.ID, "identifierNext")
+                ActionChains(self.driver).move_to_element(next_button).click().perform()
+                logger.info("Clicked Next via ActionChains (trusted event)")
+            except Exception as e:
+                logger.warning(f"ActionChains click failed: {e}, falling back to send_keys Enter")
+                email_input.send_keys("\n")
+
+            # Wait for page to transition
+            url_before = self.driver.current_url
+            for i in range(25):
+                time.sleep(1)
+                current_url = self.driver.current_url
+                if current_url != url_before:
+                    logger.info(f"Page transitioned after email submit. New URL: {current_url}")
+                    return
+                # Log any error messages on the page
+                if i == 3:
+                    try:
+                        error_msgs = self.driver.execute_script("""
+                            var errors = [];
+                            // Check for Google sign-in error messages
+                            var errDivs = document.querySelectorAll('[jsname="B34EJ"], .o6cuMc, .dEOOab, [role="alert"]');
+                            errDivs.forEach(function(d) { if (d.textContent.trim()) errors.push(d.textContent.trim()); });
+                            // Check for generic error containers
+                            var alertDivs = document.querySelectorAll('.LXRPh, .GQ8Pzc');
+                            alertDivs.forEach(function(d) { if (d.textContent.trim()) errors.push(d.textContent.trim()); });
+                            return errors;
+                        """)
+                        if error_msgs:
+                            logger.warning(f"Google sign-in error messages found: {error_msgs}")
+                    except Exception:
+                        pass
+                # Retry with different methods at intervals
+                if i == 7:
+                    logger.info(f"Still on identifier page after {i}s, retrying with Enter key")
+                    try:
+                        email_input = self.driver.find_element(By.CSS_SELECTOR, 'input[type="email"]')
+                        email_input.send_keys("\n")
+                    except Exception:
+                        pass
+                if i == 12:
+                    logger.info(f"Still on identifier page after {i}s, retrying with Selenium click")
+                    try:
+                        next_button = self.driver.find_element(By.ID, "identifierNext")
+                        next_button.click()
+                    except Exception:
+                        pass
+                if i == 17:
+                    logger.info(f"Still on identifier page after {i}s, retrying with form submit")
+                    try:
+                        self.driver.execute_script("""
+                            var form = document.querySelector('form');
+                            if (form) form.submit();
+                        """)
+                    except Exception:
+                        pass
+
+            logger.warning(f"Page did not transition after 25s. Still at: {self.driver.current_url}. Title: {self.driver.title}")
+        except TimeoutException:
+            logger.info("No Google sign-in email input found, page may have auto-redirected")
+
     def navigate_to_gmail_domain_url(self):
         if os.getenv("USE_SAFE_NAVIGATION_FOR_SIGNED_IN_GOOGLE_MEET_BOTS", "false") == "true":
             self.safely_navigate_to_gmail_domain_url()
@@ -578,10 +677,49 @@ class GoogleMeetUIMethods:
         gmail_domain_url = f"https://mail.google.com/a/{self.google_meet_bot_login_session.get('login_domain')}"
         logger.info(f"Navigating to gmail domain url: {gmail_domain_url}")
         self.driver.get(gmail_domain_url)
+        # For OIDC SSO, Google shows a sign-in page instead of auto-redirecting.
+        # We need to enter the email so Google triggers the OIDC redirect to our IdP.
+        self.enter_email_on_google_sign_in_page()
+
+    def apply_stealth_patches(self):
+        """Apply Chrome DevTools Protocol patches to avoid bot detection by Google."""
+        try:
+            # Inject script to run before any page JS — patches navigator.webdriver
+            self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+                "source": """
+                    // Remove webdriver flag
+                    Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                    // Patch chrome.runtime to look like a normal browser
+                    if (!window.chrome) { window.chrome = {}; }
+                    if (!window.chrome.runtime) { window.chrome.runtime = {}; }
+                    // Patch permissions query
+                    const originalQuery = window.navigator.permissions.query;
+                    window.navigator.permissions.query = (parameters) => (
+                        parameters.name === 'notifications' ?
+                        Promise.resolve({ state: Notification.permission }) :
+                        originalQuery(parameters)
+                    );
+                    // Patch plugins to look non-empty
+                    Object.defineProperty(navigator, 'plugins', {
+                        get: () => [1, 2, 3, 4, 5],
+                    });
+                    // Patch languages
+                    Object.defineProperty(navigator, 'languages', {
+                        get: () => ['en-US', 'en'],
+                    });
+                """
+            })
+            logger.info("Applied Chrome stealth patches via CDP")
+        except Exception as e:
+            logger.warning(f"Failed to apply stealth patches: {e}")
 
     def login_to_google_meet_account(self):
         self.google_meet_bot_login_session = self.create_google_meet_bot_login_session_callback()
         logger.info("Logging in to Google Meet account")
+
+        # Stealth patches disabled — they interfere with fake media devices on Meet
+        # self.apply_stealth_patches()
+
         session_id = self.google_meet_bot_login_session.get("session_id")
         google_meet_set_cookie_url = get_google_meet_set_cookie_url(session_id)
         logger.info(f"Navigating to Google Meet set cookie URL: {google_meet_set_cookie_url}")
@@ -628,12 +766,26 @@ class GoogleMeetUIMethods:
 
         layout_to_select = self.get_layout_to_select()
 
-        self.driver.get(self.meeting_url)
-
+        # Grant permissions globally before loading the meeting page
         self.driver.execute_cdp_cmd(
             "Browser.grantPermissions",
             {
-                "origin": self.meeting_url,
+                "permissions": [
+                    "geolocation",
+                    "audioCapture",
+                    "displayCapture",
+                    "videoCapture",
+                ],
+            },
+        )
+
+        self.driver.get(self.meeting_url)
+
+        # Also grant for the specific origin
+        self.driver.execute_cdp_cmd(
+            "Browser.grantPermissions",
+            {
+                "origin": "https://meet.google.com",
                 "permissions": [
                     "geolocation",
                     "audioCapture",

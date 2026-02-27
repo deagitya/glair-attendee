@@ -129,7 +129,7 @@ class ObjectAccessIntegrationTest(TransactionTestCase):
             workspace_domain="workspace-a1.com",
             email="bot-a1@workspace-a1.com",
         )
-        self.google_meet_bot_login_a1.set_credentials({"private_key": "test_private_key_a1", "cert": "test_cert_a1"})
+        self.google_meet_bot_login_a1.set_credentials({"client_id": "test_client_id_a1", "client_secret": "test_client_secret_a1"})
 
         self.google_meet_bot_login_group_a2 = GoogleMeetBotLoginGroup.objects.create(project=self.project_a2)
         self.google_meet_bot_login_a2 = GoogleMeetBotLogin.objects.create(
@@ -137,7 +137,7 @@ class ObjectAccessIntegrationTest(TransactionTestCase):
             workspace_domain="workspace-a2.com",
             email="bot-a2@workspace-a2.com",
         )
-        self.google_meet_bot_login_a2.set_credentials({"private_key": "test_private_key_a2", "cert": "test_cert_a2"})
+        self.google_meet_bot_login_a2.set_credentials({"client_id": "test_client_id_a2", "client_secret": "test_client_secret_a2"})
 
         self.google_meet_bot_login_group_b1 = GoogleMeetBotLoginGroup.objects.create(project=self.project_b1)
         self.google_meet_bot_login_b1 = GoogleMeetBotLogin.objects.create(
@@ -145,7 +145,7 @@ class ObjectAccessIntegrationTest(TransactionTestCase):
             workspace_domain="workspace-b1.com",
             email="bot-b1@workspace-b1.com",
         )
-        self.google_meet_bot_login_b1.set_credentials({"private_key": "test_private_key_b1", "cert": "test_cert_b1"})
+        self.google_meet_bot_login_b1.set_credentials({"client_id": "test_client_id_b1", "client_secret": "test_client_secret_b1"})
 
     # Tests for get_project_for_user()
     def test_get_project_for_user_admin_access_same_org(self):
@@ -594,8 +594,6 @@ class ObjectAccessIntegrationTest(TransactionTestCase):
             data={
                 "workspace_domain": "new-workspace-a1.com",
                 "email": "new-bot@new-workspace-a1.com",
-                "private_key": "new_private_key",
-                "cert": "new_cert",
             },
         )
         self.assertEqual(response.status_code, 200)
@@ -605,8 +603,6 @@ class ObjectAccessIntegrationTest(TransactionTestCase):
             data={
                 "workspace_domain": "new-workspace-a2.com",
                 "email": "new-bot@new-workspace-a2.com",
-                "private_key": "new_private_key",
-                "cert": "new_cert",
             },
         )
         self.assertEqual(response.status_code, 200)
@@ -624,8 +620,6 @@ class ObjectAccessIntegrationTest(TransactionTestCase):
             data={
                 "workspace_domain": "another-workspace-a1.com",
                 "email": "another-bot@another-workspace-a1.com",
-                "private_key": "another_private_key",
-                "cert": "another_cert",
             },
         )
         self.assertEqual(response.status_code, 200)
@@ -636,8 +630,6 @@ class ObjectAccessIntegrationTest(TransactionTestCase):
             data={
                 "workspace_domain": "unauthorized-workspace.com",
                 "email": "unauthorized-bot@unauthorized-workspace.com",
-                "private_key": "unauthorized_private_key",
-                "cert": "unauthorized_cert",
             },
         )
         self.assertEqual(response.status_code, 403)
@@ -648,8 +640,6 @@ class ObjectAccessIntegrationTest(TransactionTestCase):
             data={
                 "workspace_domain": "cross-org-workspace.com",
                 "email": "cross-org-bot@cross-org-workspace.com",
-                "private_key": "cross_org_private_key",
-                "cert": "cross_org_cert",
             },
         )
         self.assertEqual(response.status_code, 404)
@@ -674,7 +664,7 @@ class ObjectAccessIntegrationTest(TransactionTestCase):
             workspace_domain="workspace-a1.com",
             email="bot-a1@workspace-a1.com",
         )
-        self.google_meet_bot_login_a1.set_credentials({"private_key": "test_private_key_a1", "cert": "test_cert_a1"})
+        self.google_meet_bot_login_a1.set_credentials({"client_id": "test_client_id_a1", "client_secret": "test_client_secret_a1"})
 
         # Regular user can delete Google Meet bot logins in projects they have access to
         self.client.force_login(self.regular_user_a)

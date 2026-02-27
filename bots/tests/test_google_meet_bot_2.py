@@ -1457,8 +1457,8 @@ class TestGoogleMeetBot2(TransactionTestCase):
         # Set dummy credentials (they won't actually be used in the test)
         google_meet_bot_login.set_credentials(
             {
-                "cert": "-----BEGIN CERTIFICATE-----\nDUMMY_CERT\n-----END CERTIFICATE-----",
-                "private_key": "-----BEGIN PRIVATE KEY-----\nDUMMY_KEY\n-----END PRIVATE KEY-----",
+                "client_id": "dummy-client-id",
+                "client_secret": "dummy-client-secret",
             }
         )
 

@@ -277,7 +277,7 @@ class WebBotAdapter(BotAdapter):
             else:
                 other_bots_in_meeting_names.append(participant["fullName"])
 
-        if len(all_participants_in_meeting_excluding_other_bots) == 1 and all_participants_in_meeting_excluding_other_bots[0]["fullName"] == self.display_name:
+        if len(all_participants_in_meeting_excluding_other_bots) == 1 and (all_participants_in_meeting_excluding_other_bots[0].get("isCurrentUser") or all_participants_in_meeting_excluding_other_bots[0]["fullName"] == self.display_name):
             if self.only_one_participant_in_meeting_at is None:
                 self.only_one_participant_in_meeting_at = time.time()
                 logger.info(f"only_one_participant_in_meeting_at set to {self.only_one_participant_in_meeting_at}. Ignoring other bots in meeting: {other_bots_in_meeting_names}")
@@ -563,6 +563,7 @@ class WebBotAdapter(BotAdapter):
         options.add_argument("--disable-application-cache")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--lang=en-US")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
 
         if os.getenv("ENABLE_CHROME_SANDBOX", "false").lower() != "true":
@@ -575,6 +576,7 @@ class WebBotAdapter(BotAdapter):
         prefs = {
             "credentials_enable_service": False,
             "profile.password_manager_enabled": False,
+            "intl.accept_languages": "en-US,en",
         }
         options.add_experimental_option("prefs", prefs)
 
